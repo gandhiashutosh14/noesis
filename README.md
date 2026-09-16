@@ -4,7 +4,7 @@
 
 **A self-improving agent framework that grades its own trajectories with a multi-judge jury, shapes step-level rewards through a learned gate, and updates an inspectable policy across runs. No GPUs, no external services, runs offline.**
 
-![Python](https://img.shields.io/badge/python-3.10%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Tests](https://img.shields.io/badge/e2e%20test-offline%2C%20no%20API%20key-brightgreen) ![Status](https://img.shields.io/badge/status-working%20prototype-orange)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green) [![tests](https://github.com/gandhiashutosh14/noesis/actions/workflows/ci.yml/badge.svg)](https://github.com/gandhiashutosh14/noesis/actions/workflows/ci.yml) ![Offline](https://img.shields.io/badge/e2e%20test-offline%2C%20no%20API%20key-brightgreen) ![Status](https://img.shields.io/badge/status-working%20prototype-orange)
 
 ---
 
