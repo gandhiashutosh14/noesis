@@ -108,7 +108,7 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -e ".[dev]"
 
-# 1. Run the closed-loop end-to-end test (offline, mock provider, ~2 seconds)
+# 1. Run the tests (offline, mock provider, a few seconds): the closed loop and the report check
 pytest -q
 
 # 2. Run a single task through the loop
@@ -119,6 +119,9 @@ python -m noesis.cli.main self-improve --tasks noesis/examples --cycles 3 --snap
 
 # 4. Inspect what the policy learned
 python -m noesis.cli.main show-stats --task-type arithmetic
+
+# 5. Recompute an evidence report from the store (reads SQLite only, calls no model)
+python -m noesis.cli.main report --out reports/my-run.md --json reports/my-run.json
 ```
 
 The CLI writes `noesis_state.db` in the current directory (git-ignored). Delete it to start from a blank policy.
@@ -145,6 +148,12 @@ Output of step 2 above on the mock provider (Windows 11, Python 3.11, 2026-09-16
 
 Step 3 (three example tasks × three cycles) ran 9 cycles at a mean reward of 0.315 and left the following behind in SQLite: 9 trajectories, 27 judge scores (3 judges × 9), 9 rewards, 9 reflection notes, 8 strategy-stat rows, 4 policy snapshots, 1 gate-parameter row. Zero preference pairs formed, because the mock's reward gaps stayed under `preference_margin`; see *Status and scope*.
 
+### Evaluation evidence
+
+[`reports/mock-run-2026-09-16.md`](reports/mock-run-2026-09-16.md) is the `report` command run over the store left by step 3 above (three example tasks, three cycles, mock provider). The command reads the `trajectories`, `judge_scores` and `rewards` tables and recomputes, per trajectory, the step kinds, tool calls and tool errors, thrash steps (a revise not preceded by a reflect), repeated revisions of the same step, the mean and spread of the judges' overall scores, the agreement and contested flag, and, per judge, how far it sits from the jury mean. It then compares the recomputation with what the reward layer stored (thrash step ids, number of step gates) and lists any discrepancy.
+
+What it proves: the layers are wired and the stored reward breakdowns agree with the step records. What it does not prove: anything about task quality, judge calibration or improvement over cycles. Under the mock provider the judge scores are deterministic fixtures; the report header names the model recorded in the steps so that this is visible in the artifact itself, and the same command over a store produced with a real model would be the place to look for real behaviour. A test builds a small store with the mock and checks the report against the rows.
+
 ### Using a real model
 
 Edit `noesis/config/defaults.yaml` so the `routing` primaries point at `openai_4o_mini` or `openai_4o` and export `OPENAI_API_KEY`, or override without editing:
@@ -170,9 +179,11 @@ noesis/
 ├── rewards/       cognitive_momentum.py, gated_teacher.py, components.py, shaping.py
 ├── policy/        strategy_book.py, selector.py, preference_store.py, prompt_evolution.py, update.py
 ├── loop/          self_improve.py (orchestrator), regression.py (snapshot + rollback guard)
-├── cli/           main.py — run-task / self-improve / show-stats
+├── report/        evidence.py — the report recomputed from the store
+├── cli/           main.py — run-task / self-improve / show-stats / report
 ├── examples/      three task JSONs (arithmetic, knowledge lookup, multi-step)
-└── tests/         test_e2e.py — the closed loop, offline
+└── tests/         test_e2e.py — the closed loop, offline; test_report.py — report vs store
+reports/                   the committed evidence report of a mock-provider run
 docs/DEVELOPMENT_NOTES.md  how this project was built and refined
 ```
 

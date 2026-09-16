@@ -160,6 +160,12 @@ def main() -> None:
     stats = sub.add_parser("show-stats", help="Inspect what the policy has learned")
     stats.add_argument("--task-type", help="If set, print strategy stats for this task type")
 
+    rep = sub.add_parser("report", help="Recompute an evidence report from the SQLite store (no model call)")
+    rep.add_argument("--db", help="Path to the store (default: the configured sqlite_path)")
+    rep.add_argument("--out", required=True, help="Markdown report path")
+    rep.add_argument("--json", dest="json_path", help="Optional JSON path for the same report")
+    rep.add_argument("--note", help="Provenance paragraph placed at the top of the report")
+
     args = p.parse_args()
 
     if args.cmd == "run-task":
@@ -168,6 +174,31 @@ def main() -> None:
         asyncio.run(_cmd_self_improve(args))
     elif args.cmd == "show-stats":
         _cmd_show_stats(args)
+    elif args.cmd == "report":
+        _cmd_report(args)
+
+
+# ---------------------------------------------------------------------------
+def _cmd_report(args: argparse.Namespace) -> None:
+    from noesis.report import build_report, render_markdown
+    db = args.db
+    if not db:
+        try:
+            config = load_config(Path(args.config)) if args.config else load_config()
+        except ConfigurationError as e:
+            print(f"[noesis] configuration error: {e}", file=sys.stderr)
+            sys.exit(2)
+        db = str(config.memory.sqlite_path)
+    if not Path(db).exists():
+        print(f"[noesis] no store at {db}", file=sys.stderr)
+        sys.exit(1)
+    report = build_report(db)
+    text = render_markdown(report, args.note)
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(text, encoding="utf-8")
+    if args.json_path:
+        Path(args.json_path).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    print(text)
 
 
 if __name__ == "__main__":
