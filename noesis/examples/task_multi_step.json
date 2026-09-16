@@ -1,0 +1,7 @@
+{
+  "task_id": "demo_multi_001",
+  "task_type": "multi_step_reasoning",
+  "task_description": "Explain the difference between precision and recall for a binary classifier. Then compute: with 40 true positives, 10 false positives and 20 false negatives, what is the precision?",
+  "expected_answer": "0.8",
+  "complexity": 0.75
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "demo_qa_001",
+  "task_type": "knowledge_lookup",
+  "task_description": "What is Thompson sampling, and how does it balance exploration against exploitation?",
+  "expected_answer": "draws one sample from each arm's Beta posterior and picks the arm with the highest sample; uncertain arms get explored, proven arms get exploited",
+  "complexity": 0.5
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "demo_math_001",
+  "task_type": "arithmetic",
+  "task_description": "What is 47 * 13 + 28?",
+  "expected_answer": "639",
+  "complexity": 0.2
+}

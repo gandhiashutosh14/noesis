@@ -1,0 +1,214 @@
+# NOESIS — Default Configuration
+# ===============================
+# Ships with provider=mock so the system runs end-to-end without an API key.
+# Replace the endpoint definitions with real providers in production.
+
+endpoints:
+  - name: mock_default
+    provider: mock
+    model_id: noesis-mock-v1
+    temperature: 0.4
+    max_tokens: 2048
+    role_tags: ["planner", "student", "synthesizer", "judge"]
+
+  - name: openai_4o_mini
+    provider: openai
+    model_id: gpt-4o-mini
+    api_key_env: OPENAI_API_KEY
+    temperature: 0.3
+    max_tokens: 2048
+    role_tags: ["planner", "student", "synthesizer", "judge"]
+
+  - name: openai_4o
+    provider: openai
+    model_id: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    temperature: 0.2
+    max_tokens: 4096
+    role_tags: ["planner", "student", "synthesizer", "judge"]
+
+routing:
+  planner:
+    primary: mock_default
+    fallback: [openai_4o_mini]
+  student:
+    primary: mock_default
+    fallback: [openai_4o_mini]
+  synthesizer:
+    primary: mock_default
+    fallback: [openai_4o_mini]
+
+jury:
+  consensus_method: trimmed_mean
+  disagreement_threshold: 0.25
+  judges:
+    - persona_id: rigorous_auditor
+      display_name: "Rigorous Auditor"
+      endpoint_name: mock_default
+      persona_prompt: |
+        You are a meticulous auditor. You score with skepticism: claims must be
+        backed, tool calls must be justified, and shortcuts cost points. You do
+        not soften scores out of politeness.
+      rubric_weights:
+        correctness: 1.0
+        faithfulness: 1.0
+        task_completion: 0.9
+        instruction_adherence: 0.9
+        tool_use_quality: 0.8
+        efficiency: 0.4
+        robustness: 0.7
+        novelty: 0.2
+        safety: 1.0
+        reproducibility: 0.6
+
+    - persona_id: frontier_researcher
+      display_name: "Frontier Researcher"
+      endpoint_name: mock_default
+      persona_prompt: |
+        You are a frontier-research-oriented evaluator. You reward novel
+        decompositions, depth-appropriate reasoning, and trajectories that
+        demonstrate genuine exploration over rote pattern-matching. You penalise
+        false confidence and unsupported leaps.
+      rubric_weights:
+        correctness: 0.9
+        faithfulness: 0.7
+        task_completion: 0.8
+        instruction_adherence: 0.6
+        tool_use_quality: 0.7
+        efficiency: 0.3
+        robustness: 0.6
+        novelty: 1.0
+        safety: 0.9
+        reproducibility: 0.4
+
+    - persona_id: pragmatic_engineer
+      display_name: "Pragmatic Engineer"
+      endpoint_name: mock_default
+      persona_prompt: |
+        You are an engineering pragmatist. You reward solutions that ship,
+        cost less, and degrade gracefully. You penalise over-engineering, gold
+        plating, and trajectories that ignore latency/cost budgets.
+      rubric_weights:
+        correctness: 0.9
+        faithfulness: 0.6
+        task_completion: 1.0
+        instruction_adherence: 0.7
+        tool_use_quality: 0.7
+        efficiency: 1.0
+        robustness: 0.7
+        novelty: 0.1
+        safety: 0.8
+        reproducibility: 0.8
+
+rl:
+  exploration_strategy: thompson
+  epsilon: 0.15
+  ucb_c: 1.4
+  preference_margin: 0.10
+  regression_guard_threshold: 0.05
+  rollback_window: 10
+
+rewards:
+  correctness: 0.30
+  momentum: 0.20
+  depth_appropriateness: 0.10
+  productive_recovery: 0.08
+  calibration: 0.07
+  efficiency: 0.05
+  novelty: 0.03
+  gated_teacher: 0.17
+  thrash_penalty: 0.10
+  safety_violation_penalty: 1.0
+
+gate:
+  initial_alpha: 4.0
+  initial_beta: 2.0
+  confidence_floor: 0.4
+  agreement_floor: 0.5
+  negative_attenuation: 0.5
+  learning_rate: 0.05
+
+tools:
+  - name: calculator
+    description: "Evaluates arithmetic and basic math expressions. Use for any numeric computation."
+    import_path: noesis.tools.calculator
+    callable: evaluate
+    cost_estimate: 0.01
+    latency_estimate_ms: 20
+    enabled: true
+    tags: [math, arithmetic, computation]
+
+  - name: text_search
+    description: "Searches an in-process text corpus for relevant passages. Use when the answer depends on external facts."
+    import_path: noesis.tools.text_search
+    callable: search
+    cost_estimate: 0.05
+    latency_estimate_ms: 50
+    enabled: true
+    tags: [search, retrieval, lookup]
+
+  - name: code_runner
+    description: "Executes short Python snippets in a sandboxed namespace. Use for algorithmic or data-shaping logic."
+    import_path: noesis.tools.code_runner
+    callable: run_python
+    cost_estimate: 0.10
+    latency_estimate_ms: 200
+    enabled: true
+    tags: [code, python, computation]
+
+prompts:
+  - template_id: planner.default
+    version: "1.0.0"
+    role: planner
+    active: true
+    body: |
+      You are a planner. Given the task below, produce a JSON plan with:
+        - frame: a one-sentence restatement of what the user is asking
+        - approach: 2-4 sentences describing the strategy
+        - steps: ordered list, each item containing step_id, description, kind, tool (optional), and expected_output
+        - confidence: 0-1
+      Reasoning depth: {depth}. Available tools: {tools}.
+      Task:
+      {task}
+
+  - template_id: synthesizer.default
+    version: "1.0.0"
+    role: synthesizer
+    active: true
+    body: |
+      You are a synthesizer. Compose the final answer for this task using the
+      trajectory below. Be direct. Cite tool outputs by step_id when relevant.
+      Surface any unresolved uncertainty.
+      Task: {task}
+      Trajectory:
+      {trajectory}
+
+  - template_id: reflector.default
+    version: "1.0.0"
+    role: reflector
+    active: true
+    body: |
+      You are a reflector. The agent has produced an interim answer. Identify
+      the single most likely failure mode and whether the trajectory should
+      revise. Output JSON with keys "revise" (bool), "reason" (string), and
+      "suggested_action" (string).
+      Trajectory:
+      {trajectory}
+      Interim answer:
+      {answer}
+
+memory:
+  sqlite_path: ./noesis_state.db
+  enable_vector_recall: false
+  trajectory_retention_days: 90
+  max_reflection_notes_per_task_type: 32
+
+experiment:
+  experiment_name: default
+  seed: 7
+  log_dir: ./noesis_logs
+  record_full_trajectories: true
+
+max_steps_per_task: 10
+max_reflection_passes: 2
+default_reasoning_depth: standard
