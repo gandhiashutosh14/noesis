@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# NOESIS runtime state (created by the CLI in the working directory)
+noesis_state.db
+noesis_state.db-*
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+noesis_logs/
+
+# Secrets and local config
+.env
+.env.*
+*.pem
+*.p8
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
