@@ -1,0 +1,330 @@
+{
+  "generated": "2026-09-16 18:03 UTC",
+  "db_path": "noesis_state.db",
+  "table_counts": {
+    "tasks": 3,
+    "trajectories": 9,
+    "judge_scores": 27,
+    "rewards": 9,
+    "preference_pairs": 0,
+    "strategy_stats": 8,
+    "prompt_versions": 0,
+    "reflection_notes": 9,
+    "gate_params": 1,
+    "judge_reliability": 9,
+    "policy_snapshots": 4
+  },
+  "models_seen_in_steps": {
+    "mock_default": 18
+  },
+  "experiments": [
+    "default"
+  ],
+  "observed": {
+    "trajectories": 9,
+    "contested": 0,
+    "with_thrash": 0,
+    "thrash_steps_total": 0,
+    "tool_calls": 9,
+    "tool_errors": 3,
+    "with_repeated_revisions": 0,
+    "status_histogram": {
+      "complete": 9
+    }
+  },
+  "judges": [
+    {
+      "persona_id": "frontier_researcher",
+      "n": 9,
+      "mean_overall": 0.7326,
+      "mean_confidence": 0.7188,
+      "mean_deviation_from_jury_mean": 0.0186
+    },
+    {
+      "persona_id": "pragmatic_engineer",
+      "n": 9,
+      "mean_overall": 0.6855,
+      "mean_confidence": 0.7591,
+      "mean_deviation_from_jury_mean": -0.0285
+    },
+    {
+      "persona_id": "rigorous_auditor",
+      "n": 9,
+      "mean_overall": 0.7239,
+      "mean_confidence": 0.6774,
+      "mean_deviation_from_jury_mean": 0.0099
+    }
+  ],
+  "strategies": [
+    {
+      "strategy_id": "baseline_shallow",
+      "n": 2,
+      "mean_reward": 0.3074,
+      "mean_steps": 4.5
+    },
+    {
+      "strategy_id": "baseline_standard",
+      "n": 3,
+      "mean_reward": 0.3296,
+      "mean_steps": 4.33
+    },
+    {
+      "strategy_id": "compute_first",
+      "n": 2,
+      "mean_reward": 0.3268,
+      "mean_steps": 4.5
+    },
+    {
+      "strategy_id": "deep_with_reflection",
+      "n": 1,
+      "mean_reward": 0.2723,
+      "mean_steps": 4.0
+    },
+    {
+      "strategy_id": "search_first",
+      "n": 1,
+      "mean_reward": 0.3278,
+      "mean_steps": 4.0
+    }
+  ],
+  "trajectories": [
+    {
+      "trajectory_id": "e8b08221-e2c6-4a0e-acff-9477dc7991d3",
+      "task_id": "demo_math_001",
+      "task_type": "arithmetic",
+      "strategy_id": "baseline_standard",
+      "status": "complete",
+      "steps": 4,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2
+      },
+      "tool_calls": 1,
+      "tool_errors": 0,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.7656,
+      "judge_stddev": 0.0121,
+      "agreement": 0.9759,
+      "contested": false,
+      "reward_final": 0.3577,
+      "cognitive_momentum": 0.1893,
+      "gated_teacher": 0.0817,
+      "latency_ms": 36
+    },
+    {
+      "trajectory_id": "9dffb93d-e507-4720-8de0-1f620df95fba",
+      "task_id": "demo_multi_001",
+      "task_type": "multi_step_reasoning",
+      "strategy_id": "compute_first",
+      "status": "complete",
+      "steps": 5,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2,
+        "reflect": 1
+      },
+      "tool_calls": 1,
+      "tool_errors": 1,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.6756,
+      "judge_stddev": 0.037,
+      "agreement": 0.926,
+      "contested": false,
+      "reward_final": 0.3007,
+      "cognitive_momentum": 0.1252,
+      "gated_teacher": 0.0848,
+      "latency_ms": 46
+    },
+    {
+      "trajectory_id": "501c2be4-661f-4844-a498-60b2002e7412",
+      "task_id": "demo_qa_001",
+      "task_type": "knowledge_lookup",
+      "strategy_id": "compute_first",
+      "status": "complete",
+      "steps": 4,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2
+      },
+      "tool_calls": 1,
+      "tool_errors": 0,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.7264,
+      "judge_stddev": 0.0296,
+      "agreement": 0.9408,
+      "contested": false,
+      "reward_final": 0.3529,
+      "cognitive_momentum": 0.1973,
+      "gated_teacher": 0.083,
+      "latency_ms": 36
+    },
+    {
+      "trajectory_id": "7a84fe94-b13e-4466-996c-82f149e99c1f",
+      "task_id": "demo_math_001",
+      "task_type": "arithmetic",
+      "strategy_id": "baseline_standard",
+      "status": "complete",
+      "steps": 4,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2
+      },
+      "tool_calls": 1,
+      "tool_errors": 0,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.7195,
+      "judge_stddev": 0.0271,
+      "agreement": 0.9459,
+      "contested": false,
+      "reward_final": 0.3475,
+      "cognitive_momentum": 0.1976,
+      "gated_teacher": 0.0841,
+      "latency_ms": 39
+    },
+    {
+      "trajectory_id": "9b7258b8-2b38-4d6d-ac41-a2b0df4590fd",
+      "task_id": "demo_multi_001",
+      "task_type": "multi_step_reasoning",
+      "strategy_id": "baseline_shallow",
+      "status": "complete",
+      "steps": 5,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2,
+        "reflect": 1
+      },
+      "tool_calls": 1,
+      "tool_errors": 1,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.6758,
+      "judge_stddev": 0.0143,
+      "agreement": 0.9713,
+      "contested": false,
+      "reward_final": 0.2817,
+      "cognitive_momentum": 0.1262,
+      "gated_teacher": 0.0858,
+      "latency_ms": 50
+    },
+    {
+      "trajectory_id": "0f1abf59-8ed0-4669-92fc-e41f2ea49e00",
+      "task_id": "demo_qa_001",
+      "task_type": "knowledge_lookup",
+      "strategy_id": "search_first",
+      "status": "complete",
+      "steps": 4,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2
+      },
+      "tool_calls": 1,
+      "tool_errors": 0,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.7673,
+      "judge_stddev": 0.0099,
+      "agreement": 0.9803,
+      "contested": false,
+      "reward_final": 0.3278,
+      "cognitive_momentum": 0.1933,
+      "gated_teacher": 0.0831,
+      "latency_ms": 40
+    },
+    {
+      "trajectory_id": "c2f6742e-1ceb-41a9-a502-f14ccee433f3",
+      "task_id": "demo_math_001",
+      "task_type": "arithmetic",
+      "strategy_id": "baseline_shallow",
+      "status": "complete",
+      "steps": 4,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2
+      },
+      "tool_calls": 1,
+      "tool_errors": 0,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.7318,
+      "judge_stddev": 0.0601,
+      "agreement": 0.8798,
+      "contested": false,
+      "reward_final": 0.3331,
+      "cognitive_momentum": 0.1818,
+      "gated_teacher": 0.0854,
+      "latency_ms": 18
+    },
+    {
+      "trajectory_id": "dcc7859b-964f-4da7-abec-1368fb20f552",
+      "task_id": "demo_multi_001",
+      "task_type": "multi_step_reasoning",
+      "strategy_id": "baseline_standard",
+      "status": "complete",
+      "steps": 5,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2,
+        "reflect": 1
+      },
+      "tool_calls": 1,
+      "tool_errors": 1,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.664,
+      "judge_stddev": 0.0469,
+      "agreement": 0.9061,
+      "contested": false,
+      "reward_final": 0.2835,
+      "cognitive_momentum": 0.1272,
+      "gated_teacher": 0.0867,
+      "latency_ms": 54
+    },
+    {
+      "trajectory_id": "6ce5f406-2048-4c7e-aaa3-33937d10eec8",
+      "task_id": "demo_qa_001",
+      "task_type": "knowledge_lookup",
+      "strategy_id": "deep_with_reflection",
+      "status": "complete",
+      "steps": 4,
+      "kinds": {
+        "plan": 1,
+        "tool_call": 1,
+        "synthesize": 2
+      },
+      "tool_calls": 1,
+      "tool_errors": 0,
+      "thrash_steps": [],
+      "repeated_revisions": {},
+      "judges": 3,
+      "judge_mean_overall": 0.7,
+      "judge_stddev": 0.0159,
+      "agreement": 0.9682,
+      "contested": false,
+      "reward_final": 0.2723,
+      "cognitive_momentum": 0.1374,
+      "gated_teacher": 0.0833,
+      "latency_ms": 19
+    }
+  ],
+  "discrepancies": []
+}
