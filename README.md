@@ -8,6 +8,73 @@
 
 ---
 
+> **In plain English:** Teams that deploy AI (artificial intelligence) agents need to know three things: did a change make the agent better, can the automated judges be trusted, and how can a bad change be undone? NOESIS is a Python framework that runs this improvement loop in the open, with a panel of judges, a database record of every decision, and rollback. It is a working prototype: by default, and in every test and report here, it runs offline on a mock model provider, so no model is called and the scores are deterministic fixtures, not measurements.
+>
+> **Reading guide:** business readers can read the next three sections, then jump to [SWOT](#swot-analysis) and [where this applies](#where-this-applies). Engineers can go straight to [What it is, and why](#what-it-is-and-why).
+
+## The problem in plain English
+
+*Illustrative example:* a support team runs an AI agent that answers staff questions with the help of a few internal tools. On Monday an engineer rewrites the agent's main instructions, its prompt. By Friday the manager asks a simple question: is the agent better or worse than last week? Nobody can answer with confidence.
+
+This is hard for three reasons. First, an agent works in steps: it plans, calls tools, checks its work and writes an answer. A pass-or-fail mark on the final answer does not say which step helped or hurt. Second, the grading is often done by a large language model (LLM) acting as a judge. LLM judges are fast and cheap, but a single judge can be biased or inconsistent, and its mistakes quietly steer the team. Third, changes pile up. When quality drops, it is hard to tell which change caused it, and the last good set-up may already be gone.
+
+NOESIS makes each part of that loop visible. Three judge personas score every step, and their confidence and agreement decide how much each step score counts. The scores become a reward that gives credit to individual steps, and the loop uses it to update its record of which strategy works for which kind of task. Every decision is kept as a row in SQLite, a single-file database. If recent rewards fall too far below the level saved with the last snapshot, the loop restores the settings saved in that snapshot. A `report` command rebuilds the evidence from the stored rows without calling any model.
+
+The limit matters: in this repository the model is a mock. Its answers and scores are deterministic fixtures, so the committed results show that the machinery works and that the records agree with each other. They do not show that any agent got better.
+
+## Executive summary
+
+| Question | Answer |
+|---|---|
+| What problem does this address? | Knowing whether a change to an AI agent (a prompt, model or strategy) made it better, whether automated LLM judges can be trusted, and how to roll back a change that made it worse. |
+| Who has this problem? | AI platform, product and evaluation teams, and the engineering leaders who approve agent releases, in any organisation that runs LLM agents on repeated tasks. |
+| What does this repository do? | Runs an agent on tasks, has three judge personas score each step, turns the scores into a reward, and updates a strategy policy stored in SQLite, with snapshots and rollback. A `report` command recomputes the evidence from the stored rows. |
+| What has been shown so far? | 3 automated tests ([`noesis/tests/`](noesis/tests/)) pass offline in GitHub Actions on Python 3.10 and 3.12 ([workflow](.github/workflows/ci.yml)). A committed run of the three example tasks over three cycles stored 9 trajectories and 27 judge scores; 3 of the 9 tool calls recorded an error, no verdict was contested, and the stored reward breakdowns matched the step records ([report](reports/mock-run-2026-09-16.md)). |
+| How mature is it? | A working prototype, as [Status and scope](#status-and-scope) says. All committed evidence comes from the mock provider, whose judge scores and rewards are deterministic fixtures, not measurements. |
+| What it is not | Not evidence that the agent improves, that the judges are calibrated, or that strategy choice gets better over cycles. Not a benchmark result, and no production use is documented. The OpenAI client is implemented, but no test exercises it. The prompt-mutation code exists, but the loop does not call it yet. |
+| What it would take to use it for real | Run the loop and `report` against real models on a task set large enough for reward differences to mean something; compare judge scores with human ratings; set the reward weights and rollback threshold from that data; wire prompt mutation into the loop; add the missing vector store for reflection notes; and connect it to an agent registry as described in [Integrating with an existing agent registry](#integrating-with-an-existing-agent-registry). |
+
+## How it works, end to end
+
+The engineering view of the same loop is in [Architecture](#architecture).
+
+```mermaid
+flowchart TD
+    A["Task arrives"] --> B["Pick a strategy using past results"]
+    B --> C["Agent plans, calls tools, reflects and answers"]
+    C --> D["Three judge personas score the answer and every step"]
+    D --> E["Gate weights each step score by judge confidence and agreement"]
+    E --> F["Scores combined into one reward between 0 and 1"]
+    F --> G["Policy records updated in SQLite"]
+    G --> H{"Recent rewards too far below the last snapshot?"}
+    H -- "yes" --> I["Restore the settings saved in that snapshot"]
+    H -- "no" --> J["Next task"]
+    I --> J
+    G --> K["report command recomputes the evidence from stored rows"]
+```
+
+1. **Task intake.** A task has an id, a type such as `arithmetic`, a description and, optionally, an expected answer. Examples live in [`noesis/examples/`](noesis/examples/); the `run-task` and `self-improve` commands are in [`noesis/cli/main.py`](noesis/cli/main.py).
+2. **Strategy choice.** The selector picks one of 5 strategies, such as shallow or deep-with-reflection, from past results for that task type. It uses Thompson sampling by default, or UCB (upper confidence bound) or epsilon-greedy ([`noesis/policy/selector.py`](noesis/policy/selector.py)).
+3. **Agent run.** The runtime plans, calls tools (a safe calculator, a text search and a sandboxed Python runner), reflects, may revise, and writes an answer. Every step is recorded ([`noesis/runtime/runtime.py`](noesis/runtime/runtime.py)).
+4. **Jury.** Three judge personas score the trajectory on 10 rubric dimensions and give each step a score and a confidence. The jury averages them and flags the verdict as contested when the judges disagree too much ([`noesis/judges/jury.py`](noesis/judges/jury.py)).
+5. **Reward.** The gate turns each step's judge confidence and agreement into a weight. Cognitive Momentum spreads credit across the steps. Correctness, efficiency and novelty are added, and a safety failure sets the reward to zero ([`noesis/rewards/shaping.py`](noesis/rewards/shaping.py)).
+6. **Policy update.** The loop updates strategy statistics, the gate settings, a running Brier score per judge, preference pairs and reflection notes ([`noesis/policy/update.py`](noesis/policy/update.py)).
+7. **Regression guard.** If the rolling mean reward drops more than a set threshold below the latest snapshot's level, the loop restores the settings saved in that snapshot: the gate parameters and any active prompt versions. Strategy counts are deliberately left alone ([`noesis/loop/regression.py`](noesis/loop/regression.py)).
+8. **Evidence.** `report` reads the SQLite store only, recomputes what happened, and lists any mismatch with what the reward layer stored ([`noesis/report/evidence.py`](noesis/report/evidence.py)).
+
+**Worked example.** Row 1 of the committed mock run ([`reports/mock-run-2026-09-16.md`](reports/mock-run-2026-09-16.md)). The scores are deterministic fixtures from the mock provider, not measurements.
+
+| Stage | What the store recorded |
+|---|---|
+| Task | `demo_math_001` (`arithmetic`): "What is 47 * 13 + 28?", expected answer 639 ([`task_math.json`](noesis/examples/task_math.json)) |
+| Strategy | `baseline_standard` |
+| Agent steps | 4 in total: 1 plan, 1 tool call with no error, 2 synthesize steps |
+| Jury | 3 judges; mean overall score 0.7656, standard deviation 0.0121, agreement 0.9759, not contested |
+| Reward | 0.3577 in total, including 0.1893 from Cognitive Momentum and 0.0817 from the gated teacher |
+| Cross-check | 0 thrash steps, and one stored gate per step, both matching the step records |
+
+Agreement is 1 minus the judges' standard deviation divided by 0.5, so near-identical scores give agreement close to 1. In the same run, all 3 tool errors came from the multi-step example, where the mock planner passed the calculator an expression it refuses; those trajectories still completed and were scored.
+
 ## What it is, and why
 
 Most "self-improving agent" demos do one of two things: fine-tune weights nobody can inspect, or loop an LLM over its own output and hope. NOESIS does neither.
@@ -202,6 +269,68 @@ This is a **working prototype**, not a benchmarked research result.
 ## Integrating with an existing agent registry
 
 NOESIS decides *which strategy to use when calling* a capability; an agent registry decides *which agent to call*. They compose: register a `ToolHandle` whose `fn` calls your registry's orchestrate endpoint, list it in a strategy's `tool_preference`, and CMR will reward trajectories where the registry's routing produced productive momentum. The adapter is deliberately not shipped so the package stays decoupled from any specific registry API.
+
+## SWOT analysis
+
+A SWOT analysis lists **S**trengths and **W**eaknesses (inside the project) and **O**pportunities and **T**hreats (outside it).
+
+| | Helpful | Harmful |
+|---|---|---|
+| **Internal** | **Strengths**<br>• Every choice, score and reward is a SQLite row, so any claim about learning can be checked with a query<br>• Step-level credit: judges score each step, and a gate weights those scores by confidence and agreement<br>• The loop runs offline in a few seconds on a deterministic mock, so continuous integration (CI) needs no keys or network<br>• An evidence report recomputes results from the stored rows and lists any mismatch<br>• Safer tools: a calculator that parses expressions instead of calling `eval`, and a sandboxed Python runner | **Weaknesses**<br>• All committed evidence comes from a mock provider; its scores are deterministic fixtures, not measurements<br>• No evidence yet that the agent, the judges or strategy choice improve over cycles<br>• A small evidence base: three example tasks and 9 trajectories in the committed run, with 0 preference pairs formed<br>• Prompt mutation is written ([`prompt_evolution.py`](noesis/policy/prompt_evolution.py)) but not yet called by the loop; the committed run stored 0 prompt versions<br>• The three default judges share one model endpoint, and with three judges the trimmed mean trims nothing, so one outlier still moves the consensus<br>• The OpenAI client is not exercised by the tests; reward weights and thresholds are set by hand; vector recall and cross-task preference pairs are not implemented |
+| **External** | **Opportunities**<br>• Teams that deploy agents need release checks and an audit trail for every agent change<br>• Research on panels of LLM judges supports the jury design (see [Further reading](#further-reading))<br>• Could sit beside an existing agent registry as a strategy-selection layer<br>• The stored preference pairs and critiques could later feed preference-based model training | **Threats**<br>• Hosted evaluation and observability platforms already offer LLM-as-judge scoring and experiment tracking<br>• Known LLM-judge biases, such as favouring longer answers, can leak into rewards unless people spot-check them<br>• Hosted model services and their prices change often, which can break or reprice a loop that makes several model calls per task<br>• Emerging rules on AI transparency may ask for more record-keeping than this prototype provides |
+
+**Bottom line.** NOESIS is a well-instrumented harness for an agent-improvement loop. Its value today is transparency: every decision can be inspected and re-checked from the stored rows. Whether the loop improves a real agent has not been tested yet, and that is the next thing to measure.
+
+## Where this applies
+
+The rows below are illustrative fits for the approach; none describes a documented deployment.
+
+| Industry | Example use case | What this project's approach contributes |
+|---|---|---|
+| Customer support | An agent that drafts replies using a knowledge-base search | Step scores show whether the search step or the writing step caused a weak reply; rollback limits the damage of a bad change |
+| Software engineering | An agent that writes, runs and revises small programs | A sandboxed code-runner pattern, and thrash detection that flags revising without reflecting first |
+| Financial services | An agent that computes figures from company reports for analysts | An auditor-style judge persona, a safety check that zeroes the reward, and a queryable record for reviewers |
+| Healthcare administration | An agent that answers billing-policy questions from internal documents | A contested flag that marks answers the judges disagree on, which a team could route to a person |
+| Legal and compliance | An agent that checks documents against a checklist | Stored judge critiques and reflection notes that explain why an answer scored low |
+| Education | A tutoring agent that explains maths step by step | Step-level credit that rewards sound intermediate reasoning, not only the final number |
+| AI platform teams | Choosing between strategies or model routes for an internal agent | Bandit-based strategy selection, preference pairs and snapshots, all inspectable in SQLite |
+| Evaluation research | Measuring how far LLM judges agree with each other | A report that recomputes agreement and each judge's distance from the jury mean |
+
+## Glossary
+
+| Term | Plain-English meaning |
+|---|---|
+| Agent | A program that uses a language model to plan, call tools and produce an answer over several steps. |
+| Trajectory | The full record of one agent run: every step, every tool call and the final answer. |
+| Judge persona and jury | A judge persona is an LLM prompted to grade from a set point of view; the jury is three of them, with their scores combined. |
+| Rubric | The 10 dimensions each judge scores, such as correctness, faithfulness and safety. |
+| Trimmed mean | An average that drops the most extreme values first, so a single outlier counts for less. |
+| Contested verdict | A result where the judges' scores are spread out beyond a set threshold. |
+| Reward | One number between 0 and 1 that sums up how good a trajectory was; the policy learns from it. |
+| Cognitive Momentum Reward (CMR) | This project's step-level reward: it spreads credit across steps and penalises revising without reflecting first. |
+| Gated teacher reward | This project's reward that lets a judge's step score count only as much as the judges' confidence and agreement allow. |
+| Thompson sampling, UCB and epsilon-greedy | Three standard "multi-armed bandit" methods for balancing untried strategies against the best one so far. |
+| Preference pair | Two trajectories of the same task type where one earned a clearly higher reward, stored as "this beat that". |
+| Brier score | The average squared gap between a forecast and the outcome; lower means a better-calibrated judge. |
+| Snapshot and rollback | A saved copy of key settings, and putting it back when recent rewards drop too far. |
+| Mock provider | A built-in stand-in for a real model that returns fixed, well-formed answers, so the loop runs without network access or keys. |
+
+## Further reading
+
+Background on the ideas NOESIS combines, from step-level feedback and LLM judges to bandit methods.
+
+| Resource | What it is | Why it matters here |
+|---|---|---|
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) — Lightman et al., 2023 | Compares feedback on each reasoning step with feedback on the final answer only, when training models on maths problems. | It found step-level feedback worked better, which is the idea behind scoring every step here. |
+| [Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena](https://arxiv.org/abs/2306.05685) — Zheng et al., 2023 | Tests strong LLMs as judges against human preferences, and documents biases such as favouring an answer for its position or its length. | Explains why LLM judges are useful, and why NOESIS tracks judge agreement and reliability. |
+| [Replacing Judges with Juries: Evaluating LLM Generations with a Panel of Diverse Models](https://arxiv.org/abs/2404.18796) — Verga et al., 2024 | Finds that a panel of smaller judge models from different model families can beat a single large judge, with less bias. | The research case for a jury; its results also favour giving the personas different models instead of one shared endpoint. |
+| [A Tutorial on Thompson Sampling](https://arxiv.org/abs/1707.02038) — Russo et al., 2017 | A tutorial on a method that balances using what is known against trying options that might be better. | Thompson sampling is the default strategy selector in NOESIS. |
+| [Finite-time Analysis of the Multiarmed Bandit Problem](https://doi.org/10.1023/A:1013689704352) — Auer, Cesa-Bianchi and Fischer, 2002 | The paper behind the widely used UCB1 rule, with guarantees that hold after any number of trials. | The UCB selector in NOESIS uses this style of mean-plus-bonus score. |
+| [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/the-book-2nd.html) — Sutton and Barto, second edition, 2018 | A widely used reinforcement-learning textbook; the book's page links a free full text. | Covers bandits, epsilon-greedy, rewards and credit assignment, the building blocks used here. |
+| [Direct Preference Optimization: Your Language Model is Secretly a Reward Model](https://arxiv.org/abs/2305.18290) — Rafailov et al., 2023 | Trains a language model directly from pairs of preferred and rejected answers, without a separate reward model. | NOESIS stores preference pairs of the kind direct preference optimization (DPO) uses; the paper shows how such pairs can train a model. |
+| [Reflexion: Language Agents with Verbal Reinforcement Learning](https://arxiv.org/abs/2303.11366) — Shinn et al., 2023 | Agents write reflections on feedback and keep them in memory to do better on later attempts, without changing model weights. | NOESIS stores reflection notes drawn from judge critiques in a similar spirit. |
+| [Brier score](https://en.wikipedia.org/wiki/Brier_score) — Wikipedia | An explainer of a common score for checking probability forecasts. | NOESIS keeps a running Brier score for each judge to track how reliable it is. |
+| [Multi-armed bandit](https://en.wikipedia.org/wiki/Multi-armed_bandit) — Wikipedia | An explainer of repeatedly choosing among options whose payoffs are unknown. | Plain-English background for how NOESIS picks a strategy for each task. |
 
 ## License
 
