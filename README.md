@@ -141,11 +141,11 @@ with hard floors on confidence and agreement (below them the signal is zeroed), 
 
 ## Key features
 
-- **Multi-judge jury**: three configurable personas (rigorous auditor, frontier researcher, pragmatic engineer), each with its own rubric weights over 10 dimensions, evaluated in parallel, aggregated by trimmed mean, with an inter-judge agreement score and a *contested* flag.
+- **Multi-judge jury**: three configurable personas (rigorous auditor, frontier researcher, pragmatic engineer), each with its own rubric weights over 10 dimensions, evaluated in parallel, aggregated by trimmed mean (with three judges it trims nothing, so it equals the plain mean), with an inter-judge agreement score and a *contested* flag.
 - **Three exploration policies** over a finite strategy book (5 strategies: shallow, standard, deep-with-reflection, search-first, compute-first): Thompson sampling on Beta posteriors, UCB, or ε-greedy.
-- **Prompt evolution with rollback**: losing prompt versions get an LLM-proposed mutation conditioned on the jury's most adversarial critique; new versions carry a parent pointer and are promoted only after winning preference pairs.
+- **Prompt evolution (not yet wired in)**: [`prompt_evolution.py`](noesis/policy/prompt_evolution.py) can register an LLM-proposed mutation of a prompt, conditioned on the jury's most adversarial critique, with a parent pointer, but the self-improve loop does not call it yet, so no prompt versions are created (the committed run stored 0). Rollback currently restores the gate parameters.
 - **DPO-style preference pairs** formed from reward gaps within a task type, stored for the mutator and the selector to consume.
-- **Judge reliability tracking**: a running Brier score per (judge, task type) so calibrated judges earn more weight.
+- **Judge reliability tracking**: a running Brier score per (judge, task type) is tracked; it does not yet weight the jury's consensus.
 - **Regression guard**: rolling reward mean compared to the last policy snapshot; rollback if it regresses past a threshold.
 - **Safe tools**: an AST-walking calculator (no `eval`), an in-process text search, and a sandboxed Python runner that forbids imports, attribute access and dunder names.
 - **Typed configuration**: every knob is a Pydantic v2 schema with cross-field validation (routing must reference declared endpoints, reward weights must sum to ~1). Env-var overrides for provider, model, DB path, seed.

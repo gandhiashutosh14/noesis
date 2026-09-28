@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS judge_reliability (
   persona_id        TEXT NOT NULL,
   task_type         TEXT NOT NULL,
   -- Calibration tracked as (predicted_score, observed_outcome) pairs reduced
-  -- to a running brier score. Lower is better. Used by the gate.
+  -- to a running brier score. Lower is better. Tracked and reported; not yet used to weight the jury.
   brier_sum         REAL NOT NULL DEFAULT 0.0,
   n                 INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (persona_id, task_type)
